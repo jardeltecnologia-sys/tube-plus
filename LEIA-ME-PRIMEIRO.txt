@@ -1,0 +1,49 @@
+TUBE PLUS V5.1 — TELA APAGADA / SEGUNDO PLANO CORRIGIDO
+
+Repositório fixo:
+
+https://github.com/jardeltecnologia-sys/tube-plus.git
+
+Correção principal:
+Agora o Sono Premium e o Vídeo BG foram reforçados para continuar tocando quando você aperta o botão físico do celular para apagar/desligar a tela.
+
+O que foi reforçado:
+1. Serviço em primeiro plano para Sono Premium.
+2. Serviço em primeiro plano para Vídeo BG.
+3. WakeLock parcial para manter o áudio ativo com a tela apagada.
+4. Notificação persistente com botão Parar.
+5. O app não para automaticamente o som quando a Activity é destruída.
+6. Para parar, use o botão Parar no app ou na notificação.
+
+Como usar com tela apagada:
+
+1. Abra o Tube Plus.
+2. Toque em Sono.
+3. Escolha timer e Volume Boost.
+4. Escolha Chuva, Mar, Vento, Floresta, Ruído branco, Ruído marrom ou Fogueira.
+5. Aperte o botão físico do celular para apagar a tela.
+6. O som deve continuar tocando em segundo plano.
+7. Para parar, toque em Parar na notificação ou volte ao app e toque em Parar Sono Premium.
+
+Observação:
+Alguns celulares com economia agressiva de bateria podem interromper serviços em segundo plano. Se isso acontecer, permita que o Tube Plus rode em segundo plano nas configurações de bateria do Android.
+
+COMO ENVIAR:
+
+1. Extraia este ZIP.
+2. Entre na pasta:
+   tube-plus
+
+3. Na barra de endereço, digite:
+   powershell
+
+4. Rode:
+   powershell -ExecutionPolicy Bypass -File .\ENVIAR_PARA_GITHUB.ps1
+
+5. Abra:
+   https://github.com/jardeltecnologia-sys/tube-plus/actions
+
+6. Aguarde ficar verde.
+
+7. Baixe:
+   Tube-Plus-V5-1-debug-apk

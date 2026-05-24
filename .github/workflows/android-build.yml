@@ -1,0 +1,1060 @@
+name: Build Tube Plus V5.1.1 APK
+
+on:
+  push:
+    branches: [ main, principal ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build-debug-apk:
+    name: Build debug APK
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Configurar JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Configurar Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Instalar SDK
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
+
+      - name: Configurar Gradle sem cache
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.4"
+          cache-disabled: true
+
+      - name: Gerar projeto Android limpo
+        run: |
+          set -e
+          rm -rf generated-android
+          mkdir -p generated-android/app/src/main/java/com/jardeltecnologia/tubeplus
+          mkdir -p generated-android/app/src/main/res/values
+          mkdir -p generated-android/app/src/main/res/drawable
+          mkdir -p generated-android/app/src/main/res/mipmap-anydpi-v26
+          mkdir -p generated-android/app/src/main/assets
+
+          cat > generated-android/settings.gradle <<'EOF'
+          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+          dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
+          rootProject.name = 'TubePlusV51APK'
+          include ':app'
+          EOF
+
+          cat > generated-android/build.gradle <<'EOF'
+          plugins { id 'com.android.application' version '8.2.2' apply false }
+          EOF
+
+          cat > generated-android/gradle.properties <<'EOF'
+          org.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8
+          android.nonTransitiveRClass=true
+          EOF
+
+          cat > generated-android/app/build.gradle <<'EOF'
+          plugins { id 'com.android.application' }
+
+          android {
+              namespace 'com.jardeltecnologia.tubeplus'
+              compileSdk 34
+              defaultConfig {
+                  applicationId 'com.jardeltecnologia.tubeplus'
+                  minSdk 23
+                  targetSdk 34
+                  versionCode 6
+                  versionName '5.1.0'
+              }
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+          }
+          EOF
+
+          cat > generated-android/app/src/main/res/values/strings.xml <<'EOF'
+          <resources><string name="app_name">Tube Plus</string></resources>
+          EOF
+
+          cat > generated-android/app/src/main/res/values/styles.xml <<'EOF'
+          <resources>
+            <style name="AppTheme" parent="@android:style/Theme.Material.NoActionBar">
+              <item name="android:windowNoTitle">true</item>
+              <item name="android:windowActionBar">false</item>
+              <item name="android:statusBarColor">#050712</item>
+              <item name="android:navigationBarColor">#050712</item>
+              <item name="android:windowLightStatusBar">false</item>
+              <item name="android:windowLightNavigationBar">false</item>
+            </style>
+          </resources>
+          EOF
+
+          cat > generated-android/app/src/main/res/drawable/ic_launcher_background.xml <<'EOF'
+          <shape xmlns:android="http://schemas.android.com/apk/res/android"><solid android:color="#050712"/></shape>
+          EOF
+
+          cat > generated-android/app/src/main/res/drawable/ic_launcher_foreground.xml <<'EOF'
+          <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+              <path android:fillColor="#050712" android:pathData="M0,0h108v108h-108z"/>
+              <path android:fillColor="#FF1F55" android:pathData="M54,13a41,41 0,1 0,0.1 0z"/>
+              <path android:fillColor="#FFFFFF" android:pathData="M42,34v40l34,-20z"/>
+              <path android:fillColor="#FFFFFF" android:fillAlpha="0.90" android:pathData="M29,84h50v6h-50z"/>
+          </vector>
+          EOF
+
+          cat > generated-android/app/src/main/res/drawable/ic_stat_play.xml <<'EOF'
+          <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+              <path android:fillColor="#FFFFFFFF" android:pathData="M8,5v14l11,-7z"/>
+          </vector>
+          EOF
+
+          cat > generated-android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml <<'EOF'
+          <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+              <background android:drawable="@drawable/ic_launcher_background"/>
+              <foreground android:drawable="@drawable/ic_launcher_foreground"/>
+          </adaptive-icon>
+          EOF
+
+          cat > generated-android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml <<'EOF'
+          <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+              <background android:drawable="@drawable/ic_launcher_background"/>
+              <foreground android:drawable="@drawable/ic_launcher_foreground"/>
+          </adaptive-icon>
+          EOF
+
+          cat > generated-android/app/src/main/AndroidManifest.xml <<'EOF'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <uses-permission android:name="android.permission.INTERNET"/>
+              <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+              <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+              <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
+              <uses-permission android:name="android.permission.WAKE_LOCK"/>
+              <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
+              <application
+                  android:allowBackup="true"
+                  android:hardwareAccelerated="true"
+                  android:usesCleartextTraffic="false"
+                  android:icon="@mipmap/ic_launcher"
+                  android:roundIcon="@mipmap/ic_launcher_round"
+                  android:label="@string/app_name"
+                  android:supportsRtl="true"
+                  android:theme="@style/AppTheme">
+                  <activity
+                      android:name=".MainActivity"
+                      android:configChanges="orientation|screenSize|keyboardHidden|uiMode"
+                      android:exported="true"
+                      android:screenOrientation="portrait">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
+                      </intent-filter>
+                  </activity>
+                  <service
+                      android:name=".AudioPlayerService"
+                      android:exported="false"
+                      android:foregroundServiceType="mediaPlayback"/>
+                  <service
+                      android:name=".SleepSoundService"
+                      android:exported="false"
+                      android:foregroundServiceType="mediaPlayback"/>
+              </application>
+          </manifest>
+          EOF
+
+          cat > generated-android/app/src/main/assets/tube_plus_bridge.js <<'EOF'
+          (function(){
+            if(window.__TUBE_PLUS_V51__) return;
+            window.__TUBE_PLUS_V51__=true;
+            function run(){
+              var m=document.querySelector('meta[name="viewport"]');
+              if(!m){m=document.createElement('meta');m.name='viewport';document.head.appendChild(m);}
+              m.content='width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover';
+              if(!document.getElementById('tube-plus-v51-style')){
+                var s=document.createElement('style');
+                s.id='tube-plus-v51-style';
+                s.innerHTML='html,body{background:#050712!important;max-width:100%!important;overflow-x:hidden!important}::-webkit-scrollbar{display:none!important}video,iframe,embed,object,img{max-width:100%!important}video{background:#000!important;object-fit:contain!important}';
+                document.head.appendChild(s);
+              }
+            }
+            run(); setTimeout(run,600); setTimeout(run,1600);
+          })();
+          EOF
+
+          cat > generated-android/app/src/main/java/com/jardeltecnologia/tubeplus/AudioPlayerService.java <<'EOF'
+          package com.jardeltecnologia.tubeplus;
+
+          import android.app.Notification;
+          import android.app.NotificationChannel;
+          import android.app.NotificationManager;
+          import android.app.PendingIntent;
+          import android.app.Service;
+          import android.content.Intent;
+          import android.content.pm.ServiceInfo;
+          import android.media.AudioAttributes;
+          import android.media.MediaPlayer;
+          import android.os.Build;
+          import android.os.IBinder;
+          import android.os.PowerManager;
+
+          public class AudioPlayerService extends Service {
+              public static final String ACTION_PLAY = "com.jardeltecnologia.tubeplus.PLAY";
+              public static final String ACTION_STOP = "com.jardeltecnologia.tubeplus.STOP";
+              public static final String EXTRA_URL = "url";
+              public static final String CHANNEL_ID = "tube_plus_audio";
+              private static final int NOTIFICATION_ID = 3003;
+              private MediaPlayer player;
+              private PowerManager.WakeLock wakeLock;
+
+              @Override public void onCreate() {
+                  super.onCreate();
+                  createChannel();
+              }
+
+              @Override public int onStartCommand(Intent intent, int flags, int startId) {
+                  if (intent == null) return START_NOT_STICKY;
+                  if (ACTION_STOP.equals(intent.getAction())) {
+                      stopPlayback();
+                      stopSelf();
+                      return START_NOT_STICKY;
+                  }
+                  if (ACTION_PLAY.equals(intent.getAction())) {
+                      String url = intent.getStringExtra(EXTRA_URL);
+                      if (url != null && (url.startsWith("https://") || url.startsWith("http://"))) {
+                          startForegroundCompat("Preparando áudio do vídeo...");
+                          acquireWakeLock();
+                          play(url);
+                      }
+                  }
+                  return START_STICKY;
+              }
+
+              private void play(String url) {
+                  stopPlayback();
+                  try {
+                      player = new MediaPlayer();
+                      player.setAudioAttributes(new AudioAttributes.Builder()
+                              .setUsage(AudioAttributes.USAGE_MEDIA)
+                              .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                              .build());
+                      player.setDataSource(url);
+                      player.setOnPreparedListener(mp -> {
+                          mp.start();
+                          startForegroundCompat("Reproduzindo áudio do vídeo em segundo plano");
+                      });
+                      player.setOnErrorListener((mp, what, extra) -> {
+                          stopPlayback();
+                          stopSelf();
+                          return true;
+                      });
+                      player.prepareAsync();
+                  } catch (Exception e) {
+                      stopPlayback();
+                      stopSelf();
+                  }
+              }
+
+              private void stopPlayback() {
+                  try {
+                      if (player != null) {
+                          if (player.isPlaying()) player.stop();
+                          player.release();
+                      }
+                  } catch (Exception ignored) {}
+                  player = null;
+                  releaseWakeLock();
+                  if (Build.VERSION.SDK_INT >= 24) stopForeground(STOP_FOREGROUND_REMOVE);
+                  else stopForeground(true);
+              }
+
+              private void acquireWakeLock() {
+                  try {
+                      if (wakeLock != null && wakeLock.isHeld()) return;
+                      PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
+                      if (pm != null) {
+                          wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "TubePlus:VideoBgWakeLock");
+                          wakeLock.setReferenceCounted(false);
+                          wakeLock.acquire();
+                      }
+                  } catch (Exception ignored) {}
+              }
+
+              private void releaseWakeLock() {
+                  try {
+                      if (wakeLock != null && wakeLock.isHeld()) wakeLock.release();
+                  } catch (Exception ignored) {}
+                  wakeLock = null;
+              }
+
+              private void startForegroundCompat(String text) {
+                  Notification notification = buildNotification(text);
+                  if (Build.VERSION.SDK_INT >= 29) {
+                      startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK);
+                  } else {
+                      startForeground(NOTIFICATION_ID, notification);
+                  }
+              }
+
+              private Notification buildNotification(String text) {
+                  Intent openIntent = new Intent(this, MainActivity.class);
+                  PendingIntent openPending = PendingIntent.getActivity(this, 1, openIntent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+
+                  Intent stopIntent = new Intent(this, AudioPlayerService.class);
+                  stopIntent.setAction(ACTION_STOP);
+                  PendingIntent stopPending = PendingIntent.getService(this, 2, stopIntent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+
+                  Notification.Builder builder = Build.VERSION.SDK_INT >= 26
+                          ? new Notification.Builder(this, CHANNEL_ID)
+                          : new Notification.Builder(this);
+
+                  builder.setSmallIcon(R.drawable.ic_stat_play)
+                          .setContentTitle("Tube Plus")
+                          .setContentText(text)
+                          .setContentIntent(openPending)
+                          .setOngoing(true)
+                          .addAction(R.drawable.ic_stat_play, "Parar", stopPending);
+
+                  if (Build.VERSION.SDK_INT < 26) builder.setPriority(Notification.PRIORITY_LOW);
+                  return builder.build();
+              }
+
+              private void createChannel() {
+                  if (Build.VERSION.SDK_INT >= 26) {
+                      NotificationChannel channel = new NotificationChannel(CHANNEL_ID, "Áudio em segundo plano", NotificationManager.IMPORTANCE_LOW);
+                      channel.setDescription("Reprodução de mídia direta permitida pelo usuário.");
+                      NotificationManager manager = getSystemService(NotificationManager.class);
+                      if (manager != null) manager.createNotificationChannel(channel);
+                  }
+              }
+
+              @Override public void onDestroy() {
+                  stopPlayback();
+                  super.onDestroy();
+              }
+
+              @Override public IBinder onBind(Intent intent) { return null; }
+          }
+          EOF
+
+          cat > generated-android/app/src/main/java/com/jardeltecnologia/tubeplus/SleepSoundService.java <<'EOF'
+          package com.jardeltecnologia.tubeplus;
+
+          import android.app.Notification;
+          import android.app.NotificationChannel;
+          import android.app.NotificationManager;
+          import android.app.PendingIntent;
+          import android.app.Service;
+          import android.content.Intent;
+          import android.content.pm.ServiceInfo;
+          import android.media.AudioAttributes;
+          import android.media.AudioFormat;
+          import android.media.AudioTrack;
+          import android.os.Build;
+          import android.os.IBinder;
+          import android.os.PowerManager;
+          import java.util.Random;
+
+          public class SleepSoundService extends Service {
+              public static final String ACTION_PLAY = "com.jardeltecnologia.tubeplus.SLEEP_PLAY";
+              public static final String ACTION_STOP = "com.jardeltecnologia.tubeplus.SLEEP_STOP";
+              public static final String EXTRA_SOUND = "sound";
+              public static final String EXTRA_GAIN = "gain";
+              public static final String EXTRA_MINUTES = "minutes";
+              public static final String CHANNEL_ID = "tube_plus_sleep";
+              private static final int NOTIFICATION_ID = 3010;
+
+              private volatile boolean running = false;
+              private Thread worker;
+              private AudioTrack track;
+              private PowerManager.WakeLock wakeLock;
+              private long stopAt = 0L;
+
+              @Override public void onCreate() {
+                  super.onCreate();
+                  createChannel();
+              }
+
+              @Override public int onStartCommand(Intent intent, int flags, int startId) {
+                  if (intent == null) return START_NOT_STICKY;
+                  if (ACTION_STOP.equals(intent.getAction())) {
+                      stopSound();
+                      stopSelf();
+                      return START_NOT_STICKY;
+                  }
+                  if (ACTION_PLAY.equals(intent.getAction())) {
+                      String sound = intent.getStringExtra(EXTRA_SOUND);
+                      float gain = intent.getFloatExtra(EXTRA_GAIN, 1.0f);
+                      int minutes = intent.getIntExtra(EXTRA_MINUTES, 60);
+                      if (sound == null) sound = "rain";
+                      if (gain < 0.2f) gain = 0.2f;
+                      if (gain > 3.0f) gain = 3.0f;
+                      if (minutes < 0) minutes = 0;
+                      if (minutes > 480) minutes = 480;
+                      startForegroundCompat("Som para dormir: " + label(sound));
+                      acquireWakeLock();
+                      playGenerated(sound, gain, minutes);
+                  }
+                  return START_STICKY;
+              }
+
+              private void playGenerated(String sound, float gain, int minutes) {
+                  stopSound();
+                  running = true;
+                  stopAt = minutes == 0 ? 0L : System.currentTimeMillis() + minutes * 60_000L;
+                  final String selected = sound;
+                  final float selectedGain = gain;
+                  worker = new Thread(() -> runGenerator(selected, selectedGain), "TubePlusSleepGenerator");
+                  worker.start();
+              }
+
+              private void runGenerator(String sound, float gain) {
+                  final int sampleRate = 44100;
+                  final int frames = 2048;
+                  final short[] buffer = new short[frames];
+                  Random random = new Random();
+                  double phase1 = 0.0;
+                  double phase2 = 0.0;
+                  double brown = 0.0;
+                  double wind = 0.0;
+
+                  int minBuffer = AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT);
+                  int bufferSize = Math.max(minBuffer, frames * 2);
+
+                  try {
+                      track = new AudioTrack.Builder()
+                              .setAudioAttributes(new AudioAttributes.Builder()
+                                      .setUsage(AudioAttributes.USAGE_MEDIA)
+                                      .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                                      .build())
+                              .setAudioFormat(new AudioFormat.Builder()
+                                      .setSampleRate(sampleRate)
+                                      .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                                      .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                                      .build())
+                              .setBufferSizeInBytes(bufferSize)
+                              .setTransferMode(AudioTrack.MODE_STREAM)
+                              .build();
+
+                      track.play();
+
+                      while (running && (stopAt == 0L || System.currentTimeMillis() < stopAt)) {
+                          for (int i = 0; i < frames; i++) {
+                              double noise = (random.nextDouble() * 2.0) - 1.0;
+                              double sample;
+
+                              if ("ocean".equals(sound)) {
+                                  phase1 += 2.0 * Math.PI * 0.08 / sampleRate;
+                                  phase2 += 2.0 * Math.PI * 0.13 / sampleRate;
+                                  double swell = 0.45 + 0.35 * Math.sin(phase1) + 0.20 * Math.sin(phase2);
+                                  sample = noise * swell * 0.42;
+                              } else if ("wind".equals(sound)) {
+                                  wind = (wind * 0.985) + (noise * 0.015);
+                                  phase1 += 2.0 * Math.PI * 0.05 / sampleRate;
+                                  sample = (wind * 2.2 + noise * 0.12) * (0.55 + 0.35 * Math.sin(phase1));
+                              } else if ("forest".equals(sound)) {
+                                  phase1 += 2.0 * Math.PI * (650 + random.nextInt(40)) / sampleRate;
+                                  double chirp = random.nextDouble() > 0.997 ? Math.sin(phase1) * 0.7 : 0.0;
+                                  sample = noise * 0.18 + chirp;
+                              } else if ("white".equals(sound)) {
+                                  sample = noise * 0.55;
+                              } else if ("brown".equals(sound)) {
+                                  brown = (brown + (0.025 * noise)) / 1.025;
+                                  sample = brown * 3.5;
+                              } else if ("fire".equals(sound)) {
+                                  double crackle = random.nextDouble() > 0.985 ? noise * 0.9 : noise * 0.18;
+                                  sample = crackle;
+                              } else {
+                                  sample = noise * 0.38; // rain
+                                  if (random.nextDouble() > 0.985) sample += noise * 0.35;
+                              }
+
+                              sample *= gain;
+                              if (sample > 1.0) sample = 1.0;
+                              if (sample < -1.0) sample = -1.0;
+                              buffer[i] = (short) (sample * 32767);
+                          }
+                          track.write(buffer, 0, buffer.length);
+                      }
+                  } catch (Exception ignored) {
+                  } finally {
+                      stopSound();
+                      stopSelf();
+                  }
+              }
+
+              private void stopSound() {
+                  running = false;
+                  try {
+                      if (track != null) {
+                          track.pause();
+                          track.flush();
+                          track.release();
+                      }
+                  } catch (Exception ignored) {}
+                  track = null;
+                  releaseWakeLock();
+                  if (worker != null && Thread.currentThread() != worker) {
+                      try { worker.interrupt(); } catch (Exception ignored) {}
+                  }
+                  worker = null;
+                  if (Build.VERSION.SDK_INT >= 24) stopForeground(STOP_FOREGROUND_REMOVE);
+                  else stopForeground(true);
+              }
+
+              private void acquireWakeLock() {
+                  try {
+                      if (wakeLock != null && wakeLock.isHeld()) return;
+                      PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
+                      if (pm != null) {
+                          wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "TubePlus:SleepWakeLock");
+                          wakeLock.setReferenceCounted(false);
+                          wakeLock.acquire();
+                      }
+                  } catch (Exception ignored) {}
+              }
+
+              private void releaseWakeLock() {
+                  try {
+                      if (wakeLock != null && wakeLock.isHeld()) wakeLock.release();
+                  } catch (Exception ignored) {}
+                  wakeLock = null;
+              }
+
+              private String label(String sound) {
+                  if ("ocean".equals(sound)) return "Mar";
+                  if ("wind".equals(sound)) return "Vento";
+                  if ("forest".equals(sound)) return "Floresta";
+                  if ("white".equals(sound)) return "Ruído branco";
+                  if ("brown".equals(sound)) return "Ruído marrom";
+                  if ("fire".equals(sound)) return "Fogueira";
+                  return "Chuva";
+              }
+
+              private void startForegroundCompat(String text) {
+                  Notification notification = buildNotification(text);
+                  if (Build.VERSION.SDK_INT >= 29) {
+                      startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK);
+                  } else {
+                      startForeground(NOTIFICATION_ID, notification);
+                  }
+              }
+
+              private Notification buildNotification(String text) {
+                  Intent openIntent = new Intent(this, MainActivity.class);
+                  PendingIntent openPending = PendingIntent.getActivity(this, 31, openIntent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+
+                  Intent stopIntent = new Intent(this, SleepSoundService.class);
+                  stopIntent.setAction(ACTION_STOP);
+                  PendingIntent stopPending = PendingIntent.getService(this, 32, stopIntent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+
+                  Notification.Builder builder = Build.VERSION.SDK_INT >= 26
+                          ? new Notification.Builder(this, CHANNEL_ID)
+                          : new Notification.Builder(this);
+
+                  builder.setSmallIcon(R.drawable.ic_stat_play)
+                          .setContentTitle("Tube Plus Sono Premium")
+                          .setContentText(text)
+                          .setContentIntent(openPending)
+                          .setOngoing(true)
+                          .addAction(R.drawable.ic_stat_play, "Parar", stopPending);
+
+                  if (Build.VERSION.SDK_INT < 26) builder.setPriority(Notification.PRIORITY_LOW);
+                  return builder.build();
+              }
+
+              private void createChannel() {
+                  if (Build.VERSION.SDK_INT >= 26) {
+                      NotificationChannel channel = new NotificationChannel(CHANNEL_ID, "Sons para dormir", NotificationManager.IMPORTANCE_LOW);
+                      channel.setDescription("Sons relaxantes em segundo plano.");
+                      NotificationManager manager = getSystemService(NotificationManager.class);
+                      if (manager != null) manager.createNotificationChannel(channel);
+                  }
+              }
+
+              @Override public void onDestroy() {
+                  stopSound();
+                  super.onDestroy();
+              }
+
+              @Override public IBinder onBind(Intent intent) { return null; }
+          }
+          EOF
+
+          cat > generated-android/app/src/main/java/com/jardeltecnologia/tubeplus/MainActivity.java <<'EOF'
+          package com.jardeltecnologia.tubeplus;
+
+          import android.Manifest;
+          import android.annotation.SuppressLint;
+          import android.app.Activity;
+          import android.content.ActivityNotFoundException;
+          import android.content.Context;
+          import android.content.Intent;
+          import android.content.SharedPreferences;
+          import android.content.pm.PackageManager;
+          import android.graphics.Bitmap;
+          import android.graphics.Color;
+          import android.net.Uri;
+          import android.os.Build;
+          import android.os.Bundle;
+          import android.view.Gravity;
+          import android.view.View;
+          import android.view.ViewGroup;
+          import android.view.inputmethod.InputMethodManager;
+          import android.webkit.CookieManager;
+          import android.webkit.JsResult;
+          import android.webkit.WebChromeClient;
+          import android.webkit.WebResourceRequest;
+          import android.webkit.WebResourceResponse;
+          import android.webkit.WebSettings;
+          import android.webkit.WebView;
+          import android.webkit.WebViewClient;
+          import android.widget.Button;
+          import android.widget.EditText;
+          import android.widget.FrameLayout;
+          import android.widget.LinearLayout;
+          import android.widget.ProgressBar;
+          import android.widget.ScrollView;
+          import android.widget.TextView;
+          import java.io.ByteArrayInputStream;
+          import java.io.ByteArrayOutputStream;
+          import java.io.InputStream;
+          import java.net.URLEncoder;
+          import java.nio.charset.StandardCharsets;
+          import java.util.LinkedHashSet;
+          import java.util.Set;
+
+          public class MainActivity extends Activity {
+              private static final String YT_HOME = "https://m.youtube.com/";
+              private static final String YT_TRENDING = "https://m.youtube.com/feed/trending";
+              private static final String YT_SHORTS = "https://m.youtube.com/shorts";
+              private static final String UA = "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36 TubePlusV51/5.1";
+
+              private FrameLayout root;
+              private WebView webView;
+              private LinearLayout mainPanel;
+              private LinearLayout bottomBar;
+              private ProgressBar progressBar;
+              private View customView;
+              private WebChromeClient.CustomViewCallback customViewCallback;
+              private String bridgeScript = "";
+              private SharedPreferences prefs;
+              private float sleepGain = 1.0f;
+              private int sleepMinutes = 60;
+
+              @Override public void onCreate(Bundle b) {
+                  super.onCreate(b);
+                  getWindow().setStatusBarColor(Color.parseColor("#050712"));
+                  getWindow().setNavigationBarColor(Color.parseColor("#050712"));
+                  prefs = getSharedPreferences("tube_plus_v51", MODE_PRIVATE);
+                  sleepGain = prefs.getFloat("sleep_gain", 1.0f);
+                  sleepMinutes = prefs.getInt("sleep_minutes", 60);
+                  bridgeScript = loadAssetText("tube_plus_bridge.js");
+                  buildLayout();
+                  configureWebView();
+                  requestNotifications();
+                  if (b != null) webView.restoreState(b); else showHome();
+              }
+
+              private void requestNotifications() {
+                  if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                      requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 9001);
+                  }
+              }
+
+              private void buildLayout() {
+                  root = new FrameLayout(this);
+                  root.setBackgroundColor(Color.parseColor("#050712"));
+
+                  LinearLayout shell = new LinearLayout(this);
+                  shell.setOrientation(LinearLayout.VERTICAL);
+                  shell.setBackgroundColor(Color.parseColor("#050712"));
+
+                  webView = new WebView(this);
+                  webView.setVisibility(View.GONE);
+                  webView.setBackgroundColor(Color.parseColor("#050712"));
+
+                  mainPanel = new LinearLayout(this);
+                  mainPanel.setOrientation(LinearLayout.VERTICAL);
+                  mainPanel.setBackgroundColor(Color.parseColor("#050712"));
+
+                  FrameLayout content = new FrameLayout(this);
+                  content.addView(webView, new FrameLayout.LayoutParams(-1,-1));
+                  content.addView(mainPanel, new FrameLayout.LayoutParams(-1,-1));
+                  shell.addView(content, new LinearLayout.LayoutParams(-1,0,1));
+
+                  bottomBar = makeBottomBar();
+                  shell.addView(bottomBar, new LinearLayout.LayoutParams(-1,dp(62)));
+                  root.addView(shell, new FrameLayout.LayoutParams(-1,-1));
+
+                  progressBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+                  progressBar.setMax(100); progressBar.setVisibility(View.GONE);
+                  FrameLayout.LayoutParams bp = new FrameLayout.LayoutParams(-1, dp(3)); bp.gravity = Gravity.TOP;
+                  root.addView(progressBar, bp);
+
+                  setContentView(root);
+              }
+
+              private LinearLayout makeBottomBar() {
+                  LinearLayout nav = new LinearLayout(this);
+                  nav.setOrientation(LinearLayout.HORIZONTAL);
+                  nav.setGravity(Gravity.CENTER);
+                  nav.setPadding(dp(3),dp(4),dp(3),dp(4));
+                  nav.setBackgroundColor(Color.parseColor("#0B1020"));
+                  nav.addView(tab("Início", v -> showHome()), weight());
+                  nav.addView(tab("Explorar", v -> showExplore()), weight());
+                  nav.addView(tab("Sono", v -> showSleep()), weight());
+                  nav.addView(tab("Vídeo BG", v -> showVideoBackground()), weight());
+                  nav.addView(tab("Biblioteca", v -> showLibrary()), weight());
+                  return nav;
+              }
+
+              private LinearLayout.LayoutParams weight(){ return new LinearLayout.LayoutParams(0,-1,1); }
+
+              private Button tab(String t, View.OnClickListener l){
+                  Button b = new Button(this);
+                  b.setText(t); b.setTextSize(10); b.setAllCaps(false); b.setTextColor(Color.WHITE);
+                  b.setBackgroundColor(Color.TRANSPARENT); b.setPadding(0,0,0,0); b.setOnClickListener(l); return b;
+              }
+
+              private void setNativePanel() {
+                  webView.setVisibility(View.GONE);
+                  mainPanel.setVisibility(View.VISIBLE);
+                  mainPanel.removeAllViews();
+              }
+
+              private LinearLayout newBox() {
+                  ScrollView scroll = new ScrollView(this);
+                  LinearLayout box = new LinearLayout(this);
+                  box.setOrientation(LinearLayout.VERTICAL);
+                  box.setPadding(dp(18), dp(24), dp(18), dp(18));
+                  scroll.addView(box, new ScrollView.LayoutParams(-1,-2));
+                  mainPanel.addView(scroll, new LinearLayout.LayoutParams(-1,-1));
+                  return box;
+              }
+
+              private void showHome() {
+                  setNativePanel();
+                  LinearLayout box = newBox();
+                  box.addView(title("▶ Tube Plus V5.1", 32, "#FFFFFF"));
+                  TextView sub = label("Vídeos, áudio em segundo plano e Sono Premium", 15, "#CBD5E1");
+                  sub.setPadding(0,dp(4),0,dp(18)); box.addView(sub);
+
+                  EditText search = input("Pesquisar vídeos");
+                  box.addView(search, new LinearLayout.LayoutParams(-1,dp(54)));
+                  Button b = primary("Pesquisar agora");
+                  b.setOnClickListener(v -> doSearch(search.getText().toString(), search));
+                  box.addView(b, btnParams());
+
+                  box.addView(card("Sono Premium", "Chuva, mar, vento, floresta, ruídos e timer.", v -> showSleep()), btnParamsTall());
+                  box.addView(card("YouTube Mobile", "Abrir YouTube dentro do app.", v -> openWeb(YT_HOME)), btnParamsTall());
+                  box.addView(card("Vídeos em alta", "Abrir tendências e conteúdos populares.", v -> openWeb(YT_TRENDING)), btnParamsTall());
+                  box.addView(card("Vídeo BG", "Cole link direto de vídeo/áudio permitido para ouvir em segundo plano.", v -> showVideoBackground()), btnParamsTall());
+
+                  TextView note = label("Volume Boost aumenta o ganho do som gerado pelo app; não altera o limite físico do alto-falante. Em ganho alto pode distorcer.", 12, "#94A3B8");
+                  note.setPadding(0,dp(18),0,0); box.addView(note);
+              }
+
+              private void showExplore() {
+                  setNativePanel();
+                  LinearLayout box = newBox();
+                  box.addView(title("Explorar", 28, "#FFFFFF"));
+                  box.addView(label("Categorias rápidas para abrir conteúdo de vídeo.", 14, "#CBD5E1"));
+                  box.addView(card("Tendências", "O que está em alta agora.", v -> openWeb(YT_TRENDING)), btnParamsTall());
+                  box.addView(card("Shorts", "Vídeos curtos em formato vertical.", v -> openWeb(YT_SHORTS)), btnParamsTall());
+                  box.addView(card("Notícias", "Buscar vídeos de notícias.", v -> openSearch("notícias de hoje")), btnParamsTall());
+                  box.addView(card("Esportes", "Buscar futebol e esportes.", v -> openSearch("melhores momentos futebol hoje")), btnParamsTall());
+                  box.addView(card("Tecnologia", "Buscar tecnologia e tutoriais.", v -> openSearch("tecnologia tutoriais")), btnParamsTall());
+              }
+
+              private void showSleep() {
+                  setNativePanel();
+                  LinearLayout box = newBox();
+                  box.addView(title("Sono Premium", 30, "#FFFFFF"));
+                  box.addView(label("Sons internos para dormir com timer, Volume Boost e execução com a tela apagada.", 14, "#CBD5E1"));
+
+                  box.addView(section("Timer"));
+                  box.addView(rowButton("15 min", v -> setSleepMinutes(15)), rowParams());
+                  box.addView(rowButton("30 min", v -> setSleepMinutes(30)), rowParams());
+                  box.addView(rowButton("60 min", v -> setSleepMinutes(60)), rowParams());
+                  box.addView(rowButton("120 min", v -> setSleepMinutes(120)), rowParams());
+                  box.addView(rowButton("Sem timer", v -> setSleepMinutes(0)), rowParams());
+
+                  box.addView(section("Volume Boost"));
+                  box.addView(rowButton("Normal 1x", v -> setSleepGain(1.0f)), rowParams());
+                  box.addView(rowButton("+50% 1.5x", v -> setSleepGain(1.5f)), rowParams());
+                  box.addView(rowButton("+100% 2x", v -> setSleepGain(2.0f)), rowParams());
+                  box.addView(rowButton("Máximo 3x", v -> setSleepGain(3.0f)), rowParams());
+
+                  TextView state = label("Atual: timer " + (sleepMinutes == 0 ? "sem limite" : sleepMinutes + " min") + " | ganho " + sleepGain + "x", 13, "#7DD3FC");
+                  state.setPadding(0, dp(10), 0, dp(6));
+                  box.addView(state);
+
+                  box.addView(section("Sons"));
+                  box.addView(card("Chuva", "Som contínuo de chuva para dormir.", v -> startSleep("rain")), btnParamsTall());
+                  box.addView(card("Mar", "Ondas suaves em ciclo contínuo.", v -> startSleep("ocean")), btnParamsTall());
+                  box.addView(card("Vento", "Vento grave e constante.", v -> startSleep("wind")), btnParamsTall());
+                  box.addView(card("Floresta", "Ambiente natural com variações leves.", v -> startSleep("forest")), btnParamsTall());
+                  box.addView(card("Ruído branco", "Som uniforme para mascarar barulhos.", v -> startSleep("white")), btnParamsTall());
+                  box.addView(card("Ruído marrom", "Ruído mais grave e relaxante.", v -> startSleep("brown")), btnParamsTall());
+                  box.addView(card("Fogueira", "Estalos suaves para relaxar.", v -> startSleep("fire")), btnParamsTall());
+
+                  Button stop = button("Parar Sono Premium");
+                  stop.setOnClickListener(v -> stopSleep());
+                  box.addView(stop, btnParams());
+
+                  TextView warning = label("Use Volume Boost com cuidado. Ele amplifica a fonte de áudio gerada; se passar do limite, pode distorcer. Comece em 1x ou 1.5x.", 12, "#FBBF24");
+                  warning.setPadding(0, dp(16), 0, 0);
+                  box.addView(warning);
+              }
+
+              private void setSleepGain(float gain) {
+                  sleepGain = gain;
+                  prefs.edit().putFloat("sleep_gain", gain).apply();
+                  showSleep();
+              }
+
+              private void setSleepMinutes(int minutes) {
+                  sleepMinutes = minutes;
+                  prefs.edit().putInt("sleep_minutes", minutes).apply();
+                  showSleep();
+              }
+
+              private void startSleep(String sound) {
+                  Intent i = new Intent(this, SleepSoundService.class);
+                  i.setAction(SleepSoundService.ACTION_PLAY);
+                  i.putExtra(SleepSoundService.EXTRA_SOUND, sound);
+                  i.putExtra(SleepSoundService.EXTRA_GAIN, sleepGain);
+                  i.putExtra(SleepSoundService.EXTRA_MINUTES, sleepMinutes);
+                  if (Build.VERSION.SDK_INT >= 26) startForegroundService(i); else startService(i);
+              }
+
+              private void stopSleep() {
+                  Intent i = new Intent(this, SleepSoundService.class);
+                  i.setAction(SleepSoundService.ACTION_STOP);
+                  startService(i);
+              }
+
+              private void showVideoBackground() {
+                  setNativePanel();
+                  LinearLayout box = newBox();
+                  box.addView(title("Vídeo BG", 28, "#FFFFFF"));
+                  box.addView(label("Cole um link direto de vídeo/áudio permitido. Funciona com MP4, M3U8, MP3, AAC, rádio ou podcast.", 14, "#CBD5E1"));
+
+                  EditText url = input("Cole link direto: MP4, M3U8, MP3, AAC...");
+                  url.setSingleLine(false);
+                  box.addView(url, new LinearLayout.LayoutParams(-1, dp(82)));
+
+                  Button play = primary("Ouvir áudio do vídeo em segundo plano");
+                  play.setOnClickListener(v -> startBackgroundAudio(url.getText().toString().trim(), url));
+                  box.addView(play, btnParams());
+
+                  Button stop = button("Parar áudio");
+                  stop.setOnClickListener(v -> stopBackgroundAudio());
+                  box.addView(stop, btnParams());
+
+                  TextView tip = label("Páginas comuns e YouTube devem ser assistidos no player WebView. O modo BG precisa de link direto de mídia.", 12, "#94A3B8");
+                  tip.setPadding(0, dp(18), 0, 0);
+                  box.addView(tip);
+              }
+
+              private void showLibrary() {
+                  setNativePanel();
+                  LinearLayout box = newBox();
+                  box.addView(title("Biblioteca", 28, "#FFFFFF"));
+                  box.addView(label("Histórico local salvo apenas no próprio celular.", 14, "#CBD5E1"));
+                  Set<String> hist = prefs.getStringSet("history", new LinkedHashSet<>());
+                  if(hist.isEmpty()) {
+                      box.addView(label("Nenhuma pesquisa ainda. Pesquise algum vídeo para aparecer aqui.", 15, "#94A3B8"));
+                  } else {
+                      for(String item : hist) box.addView(card(item, "Abrir novamente esta pesquisa.", v -> openSearch(((Button)v).getText().toString().split("\n")[0])), btnParamsTall());
+                  }
+                  box.addView(card("Limpar histórico", "Remove pesquisas salvas.", v -> { prefs.edit().remove("history").remove("last").apply(); showLibrary(); }), btnParamsTall());
+              }
+
+              private void startBackgroundAudio(String url, View view) {
+                  if (url == null || url.length() < 8) return;
+                  Intent i = new Intent(this, AudioPlayerService.class);
+                  i.setAction(AudioPlayerService.ACTION_PLAY);
+                  i.putExtra(AudioPlayerService.EXTRA_URL, url);
+                  if (Build.VERSION.SDK_INT >= 26) startForegroundService(i); else startService(i);
+                  hideKeyboard(view);
+              }
+
+              private void stopBackgroundAudio() {
+                  Intent i = new Intent(this, AudioPlayerService.class);
+                  i.setAction(AudioPlayerService.ACTION_STOP);
+                  startService(i);
+              }
+
+              private void doSearch(String q, View v) {
+                  if(q == null || q.trim().isEmpty()) return;
+                  q = q.trim();
+                  saveSearch(q);
+                  openSearch(q);
+                  hideKeyboard(v);
+              }
+
+              private void openSearch(String q) {
+                  if(q == null || q.trim().isEmpty()) return;
+                  try { openWeb("https://m.youtube.com/results?search_query=" + URLEncoder.encode(q.trim(),"UTF-8")); } catch(Exception ignored){}
+              }
+
+              private void saveSearch(String q) {
+                  LinkedHashSet<String> set = new LinkedHashSet<>(prefs.getStringSet("history", new LinkedHashSet<>()));
+                  set.remove(q); set.add(q);
+                  while(set.size() > 8) { String first = set.iterator().next(); set.remove(first); }
+                  prefs.edit().putString("last", q).putStringSet("history", set).apply();
+              }
+
+              private TextView section(String s) {
+                  TextView t = title(s, 19, "#FFFFFF");
+                  t.setPadding(0, dp(18), 0, dp(4));
+                  return t;
+              }
+
+              private TextView title(String s, int size, String color) {
+                  TextView t = new TextView(this); t.setText(s); t.setTextSize(size); t.setTextColor(Color.parseColor(color)); t.setTypeface(null,1); t.setGravity(Gravity.LEFT); return t;
+              }
+
+              private TextView label(String s, int size, String color) {
+                  TextView t = new TextView(this); t.setText(s); t.setTextSize(size); t.setTextColor(Color.parseColor(color)); t.setGravity(Gravity.LEFT); return t;
+              }
+
+              private EditText input(String hint) {
+                  EditText e = new EditText(this); e.setHint(hint); e.setSingleLine(true); e.setTextColor(Color.WHITE); e.setHintTextColor(0xFF94A3B8); e.setTextSize(16); e.setPadding(dp(14),0,dp(14),0); e.setBackgroundColor(Color.parseColor("#111827")); return e;
+              }
+
+              private Button primary(String text){ Button b=button(text); b.setBackgroundColor(Color.parseColor("#FF1F55")); return b; }
+
+              private Button button(String text) {
+                  Button b = new Button(this); b.setText(text); b.setAllCaps(false); b.setTextColor(Color.WHITE); b.setTextSize(15); b.setBackgroundColor(Color.parseColor("#1F2937")); return b;
+              }
+
+              private Button rowButton(String text, View.OnClickListener l) {
+                  Button b = button(text);
+                  b.setOnClickListener(l);
+                  return b;
+              }
+
+              private Button card(String title, String desc, View.OnClickListener l) {
+                  Button b = button(title + "\n" + desc); b.setGravity(Gravity.CENTER_VERTICAL|Gravity.LEFT); b.setPadding(dp(14),0,dp(14),0); b.setOnClickListener(l); return b;
+              }
+
+              private LinearLayout.LayoutParams btnParams(){ LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,dp(52)); p.topMargin=dp(10); return p; }
+              private LinearLayout.LayoutParams btnParamsTall(){ LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,dp(74)); p.topMargin=dp(10); return p; }
+              private LinearLayout.LayoutParams rowParams(){ LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,dp(44)); p.topMargin=dp(6); return p; }
+
+              @SuppressLint("SetJavaScriptEnabled") private void configureWebView() {
+                  WebSettings s=webView.getSettings();
+                  s.setJavaScriptEnabled(true); s.setDomStorageEnabled(true); s.setDatabaseEnabled(true);
+                  s.setMediaPlaybackRequiresUserGesture(false); s.setLoadsImagesAutomatically(true);
+                  s.setUseWideViewPort(true); s.setLoadWithOverviewMode(true); s.setSupportZoom(false);
+                  s.setBuiltInZoomControls(false); s.setDisplayZoomControls(false); s.setAllowFileAccess(false); s.setAllowContentAccess(false);
+                  s.setCacheMode(WebSettings.LOAD_DEFAULT); s.setUserAgentString(UA);
+                  s.setJavaScriptCanOpenWindowsAutomatically(false); s.setSupportMultipleWindows(false);
+                  if(Build.VERSION.SDK_INT>=21){s.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE); CookieManager.getInstance().setAcceptThirdPartyCookies(webView,true);}
+                  CookieManager.getInstance().setAcceptCookie(true);
+                  webView.setVerticalScrollBarEnabled(false); webView.setHorizontalScrollBarEnabled(false); webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
+                  webView.setWebViewClient(new TubeClient()); webView.setWebChromeClient(new TubeChrome());
+              }
+
+              private void openWeb(String url){ mainPanel.setVisibility(View.GONE); webView.setVisibility(View.VISIBLE); webView.loadUrl(url); }
+
+              private class TubeClient extends WebViewClient {
+                  @Override public void onPageStarted(WebView v,String u,Bitmap f){ progressBar.setVisibility(View.VISIBLE); progressBar.setProgress(8); }
+                  @Override public void onPageFinished(WebView v,String u){ progressBar.setVisibility(View.GONE); injectBridge(); }
+                  @Override public boolean shouldOverrideUrlLoading(WebView v,String u){ return handleUrl(u); }
+                  @Override public boolean shouldOverrideUrlLoading(WebView v,WebResourceRequest r){ return handleUrl(r.getUrl().toString()); }
+                  @Override public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                      if (request != null && request.getUrl() != null) {
+                          String url = request.getUrl().toString().toLowerCase();
+                          if (shouldBlock(url)) return new WebResourceResponse("text/plain", "utf-8", new ByteArrayInputStream(new byte[0]));
+                      }
+                      return super.shouldInterceptRequest(view, request);
+                  }
+
+                  private boolean shouldBlock(String url) {
+                      if (url.contains("youtube.com") || url.contains("youtu.be") || url.contains("googlevideo.com") || url.contains("ytimg.com") || url.contains("youtubei.googleapis.com")) return false;
+                      return url.contains("doubleclick.net")
+                              || url.contains("googlesyndication.com")
+                              || url.contains("google-analytics.com")
+                              || url.contains("googletagmanager.com")
+                              || url.contains("facebook.com/tr")
+                              || url.contains("connect.facebook.net")
+                              || url.contains("hotjar.com")
+                              || url.contains("clarity.ms")
+                              || url.contains("taboola.com")
+                              || url.contains("outbrain.com")
+                              || url.contains("/ads?")
+                              || url.contains("adsbygoogle")
+                              || url.contains("pagead/");
+                  }
+
+                  private boolean handleUrl(String url){
+                      if(url==null)return false; Uri uri=Uri.parse(url); String scheme=uri.getScheme()==null?"":uri.getScheme().toLowerCase();
+                      if("http".equals(scheme)||"https".equals(scheme))return false;
+                      try{startActivity(new Intent(Intent.ACTION_VIEW,uri));}catch(ActivityNotFoundException ignored){}
+                      return true;
+                  }
+              }
+
+              private class TubeChrome extends WebChromeClient {
+                  @Override public void onProgressChanged(WebView v,int p){ progressBar.setProgress(p); progressBar.setVisibility(p>=100?View.GONE:View.VISIBLE); if(p>=45) injectBridge(); }
+                  @Override public boolean onJsAlert(WebView v,String u,String m,JsResult r){ r.confirm(); return true; }
+                  @Override public boolean onCreateWindow(WebView view, boolean isDialog, boolean isUserGesture, android.os.Message resultMsg) { return false; }
+                  @Override public void onShowCustomView(View view, CustomViewCallback cb){
+                      if(customView!=null){cb.onCustomViewHidden();return;}
+                      customView=view; customViewCallback=cb; webView.setVisibility(View.GONE); mainPanel.setVisibility(View.GONE); bottomBar.setVisibility(View.GONE);
+                      root.addView(customView,new FrameLayout.LayoutParams(-1,-1));
+                  }
+                  @Override public void onHideCustomView(){ hideCustomView(); }
+              }
+
+              private void hideCustomView(){
+                  if(customView==null)return; root.removeView(customView); customView=null; webView.setVisibility(View.VISIBLE); bottomBar.setVisibility(View.VISIBLE);
+                  if(customViewCallback!=null){customViewCallback.onCustomViewHidden(); customViewCallback=null;}
+              }
+
+              private String loadAssetText(String f){try{InputStream in=getAssets().open(f); ByteArrayOutputStream out=new ByteArrayOutputStream(); byte[] buf=new byte[4096]; int r; while((r=in.read(buf))!=-1)out.write(buf,0,r); in.close(); return new String(out.toByteArray(), StandardCharsets.UTF_8);}catch(Exception e){return "";}}
+              private void injectBridge(){if(bridgeScript!=null&&!bridgeScript.isEmpty())webView.evaluateJavascript(bridgeScript,null);}
+              private void hideKeyboard(View v){try{((InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(v.getWindowToken(),0);}catch(Exception ignored){}}
+              private int dp(int v){return (int)(v*getResources().getDisplayMetrics().density+0.5f);}
+              @Override public void onBackPressed(){ if(customView!=null)hideCustomView(); else if(webView.getVisibility()==View.VISIBLE && webView.canGoBack())webView.goBack(); else if(webView.getVisibility()==View.VISIBLE){webView.setVisibility(View.GONE); bottomBar.setVisibility(View.VISIBLE); showHome();} else super.onBackPressed();}
+              @Override protected void onPause(){if(webView!=null){webView.onPause(); webView.pauseTimers();} super.onPause();}
+              @Override protected void onResume(){super.onResume(); if(webView!=null){webView.resumeTimers(); webView.onResume();}}
+              @Override protected void onSaveInstanceState(Bundle out){super.onSaveInstanceState(out); if(webView!=null)webView.saveState(out);}
+              @Override protected void onDestroy(){ if(webView!=null){try{webView.loadUrl("about:blank"); webView.stopLoading(); webView.setWebChromeClient(null); webView.setWebViewClient(null); webView.destroy();}catch(Exception ignored){}} super.onDestroy();}
+          }
+          EOF
+
+      - name: Gerar APK debug
+        run: |
+          cd generated-android
+          gradle assembleDebug --no-daemon --stacktrace
+
+      - name: Preparar artifact
+        run: |
+          mkdir -p artifacts
+          cp generated-android/app/build/outputs/apk/debug/*.apk artifacts/
+          ls -la artifacts
+
+      - name: Publicar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Tube-Plus-V5-1-debug-apk
+          path: artifacts/*.apk
+          if-no-files-found: error
